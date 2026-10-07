@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Docile · Controle de Retrabalho</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#1f2937" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --card: #fff;
+        --tx: #111827;
+        --mu: #6b7280;
+        --bd: #d1d5db;
+        --free: #22c55e;
+        --goma: #f97316;
+        --gel: #8b5cf6;
+        --alert: #ef4444;
+        --hd: #1f2937;
+        box-sizing: border-box;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #0f172a;
+          --card: #1e293b;
+          --tx: #f1f5f9;
+          --mu: #94a3b8;
+          --bd: #334155;
+          --hd: #020617;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --tx: #f1f5f9;
+        --mu: #94a3b8;
+        --bd: #334155;
+        --hd: #020617;
+      }
+      html {
+        scroll-padding-top: env(safe-area-inset-top, 0px);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--tx);
+        font:
+          16px/1.4 system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
+      }
+      header {
+        background: var(--hd);
+        color: #fff;
+        padding: 10px 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      header b {
+        font-size: 17px;
+      }
+      header small {
+        opacity: 0.8;
+        display: block;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+        color: var(--tx);
+      }
+      .btn {
+        border: 0;
+        border-radius: 12px;
+        padding: 14px 16px;
+        font-weight: 700;
+        font-size: 16px;
+        cursor: pointer;
+        color: #fff;
+        background: #2563eb;
+        min-height: 48px;
+      }
+      .btn.g {
+        background: var(--free);
+      }
+      .btn.o {
+        background: var(--goma);
+      }
+      .btn.r {
+        background: var(--alert);
+      }
+      .btn.s {
+        background: var(--card);
+        color: var(--tx);
+        border: 1px solid var(--bd);
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 12px;
+      }
+      .tabs {
+        display: flex;
+        gap: 6px;
+        margin: 10px 0;
+      }
+      .tabs button {
+        flex: 1;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--bd);
+        background: var(--card);
+        font-weight: 600;
+      }
+      .tabs button.on {
+        background: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+      }
+      .fefo {
+        background: #fef2f2;
+        border: 2px solid var(--alert);
+        color: #7f1d1d;
+        border-radius: 14px;
+        padding: 12px;
+        margin-bottom: 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      .fefo.none {
+        background: var(--card);
+        border-color: var(--bd);
+        color: var(--mu);
+      }
+      .fefo .btn {
+        padding: 10px 14px;
+      }
+      input.q {
+        width: 100%;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--bd);
+        background: var(--card);
+        margin-bottom: 10px;
+      }
+      .legend {
+        display: flex;
+        gap: 10px 14px;
+        font-size: 13px;
+        color: var(--mu);
+        margin: 14px 0 6px;
+        flex-wrap: wrap;
+      }
+      .legend i {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-right: 4px;
+        vertical-align: -1px;
+      }
+      .row {
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 14px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .row h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: var(--mu);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+        gap: 6px;
+      }
+      .cell {
+        position: relative;
+        aspect-ratio: 1;
+        border: 0;
+        border-radius: 10px;
+        color: #fff;
+        font-weight: 700;
+        font-size: 11px;
+        line-height: 1.15;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 2px;
+      }
+      .cell span {
+        font-size: 10px;
+        font-weight: 500;
+        opacity: 0.95;
+      }
+      .cell.free {
+        background: #22c55e;
+      }
+      .cell.goma {
+        background: #f97316;
+      }
+      .cell.gomaT {
+        background: #fdba74;
+        color: #431407;
+      }
+      .cell.gel {
+        background: #9333ea;
+      }
+      .cell.gelT {
+        background: #d8b4fe;
+        color: #3b0764;
+      }
+      .cell.venc {
+        background: #dc2626;
+        color: #fff;
+        font-weight: 800;
+        animation: vp 0.9s infinite alternate;
+      }
+      @keyframes vp {
+        to {
+          opacity: 0.55;
+        }
+      }
+      .cell.dim {
+        opacity: 0.18 !important;
+      }
+      .cell.fefo {
+        outline: 4px solid #facc15;
+        animation: pk 1s infinite alternate;
+      }
+      .cell.fefo::after {
+        content: "⏳";
+        position: absolute;
+        top: -8px;
+        right: -6px;
+        font-size: 16px;
+      }
+      @keyframes pk {
+        to {
+          outline-color: var(--alert);
+        }
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        z-index: 10;
+      }
+      .overlay.on {
+        display: flex;
+      }
+      .sheet {
+        background: var(--card);
+        width: 100%;
+        max-width: 520px;
+        border-radius: 20px 20px 0 0;
+        padding: 18px;
+        max-height: 92%;
+        overflow: auto;
+        padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+      }
+      .sheet h2 {
+        margin: 0 0 10px;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 4px 12px;
+        margin-bottom: 14px;
+      }
+      .kv b {
+        color: var(--mu);
+        font-weight: 500;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: var(--mu);
+        margin: 10px 0 3px;
+      }
+      .f {
+        width: 100%;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--bd);
+        background: var(--bg);
+      }
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .acts {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+      }
+      .acts .btn {
+        flex: 1;
+      }
+      .log {
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+      .log small {
+        color: var(--mu);
+      }
+      .tag {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 99px;
+        color: #fff;
+        margin-right: 6px;
+      }
+      #qr {
+        width: 100%;
+        margin-top: 8px;
+      }
+      .warn {
+        background: #fef9c3;
+        color: #713f12;
+        padding: 8px 12px;
+        font-size: 13px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div><b>🍬 Docile · Retrabalho</b><small id="who"></small></div>
+      <button class="btn s" style="padding: 8px 12px; min-height: 0" id="chg">
+        Trocar
+      </button>
+    </header>
+    <main>
+      <div id="warn"></div>
+      <div id="fefo"></div>
+      <div class="tabs">
+        <button id="t1" class="on">Mapa</button
+        ><button id="t2">Histórico</button>
+      </div>
+      <div id="v1">
+        <input
+          class="q"
+          id="q"
+          placeholder="🔍 Buscar código da bala (ex: GEL02)"
+          autocapitalize="characters"
+        />
+        <div id="map"></div>
+        <div class="acts" style="position: sticky; bottom: 10px">
+          <button class="btn g" id="add">＋ NOVA ENTRADA</button
+          ><button class="btn" id="scan">📷 LER QR CODE</button>
+        </div>
+      </div>
+      <div id="v2" style="display: none"></div>
+      <footer class="legend">
+        <span><i style="background: #22c55e"></i>🟩 Livre</span
+        ><span><i style="background: #f97316"></i>🟧 Goma</span
+        ><span><i style="background: #fdba74"></i>🟧 Goma c/ TiO2</span
+        ><span><i style="background: #9333ea"></i>🟪 Gelatina</span
+        ><span><i style="background: #d8b4fe"></i>🟪 Gelatina c/ TiO2</span
+        ><span><i style="background: #dc2626"></i>🟥 Vencido</span
+        ><span>⏳ 1º a consumir</span>
+      </footer>
+    </main>
+
+    <div class="overlay" id="ov"><div class="sheet" id="sh"></div></div>
+
+    <script>
+      const SH = { A: 22, B: 18, C: 24, D: 34 };
+      const $ = (s) => document.querySelector(s);
+      const pad = (n) => String(n).padStart(2, "0");
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      let slots = {},
+        logs = [],
+        me = {},
+        db = null,
+        qrObj = null;
+      try {
+        me = JSON.parse(localStorage.getItem("docile_me") || "{}");
+      } catch (e) {}
+      const allPos = [];
+      for (const k in SH)
+        for (let i = 1; i <= SH[k]; i++) allPos.push(k + "-" + pad(i));
+      const vkey = (v) => {
+        const m = /^(\d{1,2})\/(\d{2})$/.exec(v || "");
+        return m ? +m[2] * 100 + +m[1] : 99999;
+      };
+      const normPos = (s) => {
+        const m = /([A-D])\s*-?\s*0?(\d{1,2})\s*$/i.exec((s || "").trim());
+        if (!m) return null;
+        const p = m[1].toUpperCase() + "-" + pad(+m[2]);
+        return allPos.includes(p) ? p : null;
+      };
+
+      /* ---------- dados ---------- */
+      function loadLocal() {
+        try {
+          slots = JSON.parse(localStorage.getItem("docile_slots") || "{}");
+          logs = JSON.parse(localStorage.getItem("docile_logs") || "[]");
+        } catch (e) {}
+      }
+      function saveLocal() {
+        try {
+          localStorage.setItem("docile_slots", JSON.stringify(slots));
+          localStorage.setItem("docile_logs", JSON.stringify(logs));
+        } catch (e) {}
+      }
+      async function wSlot(pos, data) {
+        if (db) {
+          await db.collection("slots").doc(pos).set(data);
+        } else {
+          slots[pos] = data;
+          saveLocal();
+          render();
+        }
+      }
+      async function dSlot(pos) {
+        if (db) {
+          await db.collection("slots").doc(pos).delete();
+        } else {
+          delete slots[pos];
+          saveLocal();
+          render();
+        }
+      }
+      async function wLog(e) {
+        e.ts = Date.now();
+        e.shift = me.shift;
+        e.turma = me.turma;
+        e.op = me.name;
+        if (db) {
+          await db
+            .collection("log")
+            .doc(e.ts + "-" + Math.random().toString(36).slice(2, 6))
+            .set(e);
+        } else {
+          logs.unshift(e);
+          saveLocal();
+          render();
+        }
+      }
+      async function initDb() {
+        try {
+          const c = await claude.use("db");
+          if (!c) {
+            return false;
+          }
+          db = c;
+          db.collection("slots").onSnapshot(
+            (s) => {
+              slots = {};
+              s.docs.forEach((d) => (slots[d.id] = d.data()));
+              render();
+            },
+            () => {},
+          );
+          db.collection("log")
+            .orderBy("ts", "desc")
+            .limit(200)
+            .onSnapshot(
+              (s) => {
+                logs = s.docs.map((d) => d.data());
+                render();
+              },
+              () => {},
+            );
+          return true;
+        } catch (e) {
+          db = null;
+          return false;
+        }
+      }
+
+      /* ---------- cores ---------- */
+      const nowKey = () => {
+        const d = new Date();
+        return (d.getFullYear() % 100) * 100 + d.getMonth() + 1;
+      };
+      const vencido = (s) => vkey(s.validade) < nowKey();
+      function cls(s) {
+        if (!s) return "free";
+        if (vencido(s)) return "venc";
+        const t = s.dioxido === "Com Dióxido" ? "T" : "";
+        return (s.tipo === "Goma" ? "goma" : "gel") + t;
+      }
+      /* ---------- FEFO ---------- */
+      function fefo() {
+        let best = null;
+        for (const p in slots) {
+          if (!best || vkey(slots[p].validade) < vkey(slots[best].validade))
+            best = p;
+        }
+        return best;
+      }
+
+      /* ---------- render ---------- */
+      function render() {
+        $("#who").textContent = me.name
+          ? `${me.shift} · ${me.turma} · ${me.name}`
+          : "";
+        const f = fefo(),
+          q = $("#q").value.trim().toUpperCase();
+        const fb = $("#fefo");
+        if (f) {
+          const s = slots[f];
+          fb.innerHTML = `<div class="fefo"><div>🚨 <b>PRÓXIMO A CONSUMIR (FEFO)</b><br>Posição <b>${f}</b> | Código <b>${esc(s.codigo)}</b> | Validade <b>${esc(s.validade)}</b></div><button class="btn r" onclick="openSlot('${f}')">DAR SAÍDA</button></div>`;
+        } else
+          fb.innerHTML = `<div class="fefo none">Nenhum lote em estoque.</div>`;
+        let h = "";
+        for (const k in SH) {
+          h += `<div class="row"><h3>PRATELEIRA ${k} · ${SH[k]} posições</h3><div class="grid">`;
+          for (let i = 1; i <= SH[k]; i++) {
+            const p = k + "-" + pad(i),
+              s = slots[p];
+            let c = cls(s);
+            if (q && (!s || !s.codigo.toUpperCase().includes(q))) c += " dim";
+            if (p === f) c += " fefo";
+            h += `<button class="cell ${c}" onclick="openSlot('${p}')">${p}${s ? `<span>${esc(s.codigo)}</span>` : ""}</button>`;
+          }
+          h += "</div></div>";
+        }
+        $("#map").innerHTML = h;
+        const icon = {
+          entrada: "🟢 Entrada",
+          saida: "🔴 Saída",
+          transferencia: "🔁 Transferência",
+        };
+        $("#v2").innerHTML = logs.length
+          ? logs
+              .map(
+                (l) =>
+                  `<div class="log"><b>${icon[l.acao] || l.acao}</b> · ${esc(l.codigo)} · ${esc(l.pos)}${l.dest ? " → " + esc(l.dest) : ""}<br><small>${new Date(l.ts).toLocaleString("pt-BR")} · ${esc(l.shift)} · ${esc(l.turma || "-")} · ${esc(l.op)}${l.lote ? " · Lote " + esc(l.lote) : ""}</small></div>`,
+              )
+              .join("")
+          : '<p style="color:var(--mu)">Sem movimentações ainda.</p>';
+      }
+
+      /* ---------- modais ---------- */
+      function open_(h) {
+        stopScan();
+        $("#sh").innerHTML = h;
+        $("#ov").classList.add("on");
+      }
+      function close_() {
+        stopScan();
+        $("#ov").classList.remove("on");
+      }
+      $("#ov").addEventListener("click", (e) => {
+        if (e.target.id === "ov") close_();
+      });
+
+      function login() {
+        open_(`<h2>Quem está operando?</h2>
+  <label>Turno atual</label><select class="f" id="lt"><option>1º Turno</option><option>2º Turno</option><option>3º Turno</option><option>Turno 12x36</option></select>
+  <label>Turma</label><select class="f" id="lu"><option>Turma 1</option><option>Turma 2</option><option>Turma 3</option><option>Turma 4</option></select>
+  <label>Nome do assistente</label><input class="f" id="ln" placeholder="Seu nome" value="${esc(me.name || "")}">
+  <div class="acts"><button class="btn g" id="lok">Entrar</button></div>`);
+        if (me.shift) $("#lt").value = me.shift;
+        if (me.turma) $("#lu").value = me.turma;
+        $("#lok").onclick = () => {
+          const n = $("#ln").value.trim();
+          if (!n) {
+            $("#ln").focus();
+            return;
+          }
+          me = { shift: $("#lt").value, turma: $("#lu").value, name: n };
+          try {
+            localStorage.setItem("docile_me", JSON.stringify(me));
+          } catch (e) {}
+          close_();
+          render();
+        };
+      }
+
+      function openSlot(p) {
+        const s = slots[p];
+        if (!s) {
+          openForm(p);
+          return;
+        }
+        open_(`<h2>${p} <span class="tag" style="background:var(${s.tipo === "Goma" ? "--goma" : "--gel"})">${esc(s.tipo)}</span>${vencido(s) ? '<span class="tag" style="background:#dc2626">VENCIDO</span>' : ""}</h2>
+  <div class="kv"><b>Código</b><span>${esc(s.codigo)}</span><b>Dióxido</b><span>${esc(s.dioxido)}</span><b>Peso</b><span>${esc(s.peso)} kg</span><b>Validade</b><span>${esc(s.validade)}</span><b>Lote</b><span>${esc(s.lote)}</span><b>Turno entrada</b><span>${esc(s.turno)}</span><b>Turma</b><span>${esc(s.turma || "-")}</span><b>Assistente</b><span>${esc(s.op)}</span><b>Registro</b><span>${new Date(s.ts).toLocaleString("pt-BR")}</span></div>
+  <div class="acts"><button class="btn r" id="out">DAR SAÍDA / CONSUMIR</button><button class="btn s" id="mv">TRANSFERIR POSIÇÃO</button></div>
+  <div class="acts"><button class="btn s" onclick="close_()">Fechar</button></div>`);
+        $("#out").onclick = async () => {
+          const f = fefo();
+          if (f && f !== p && vkey(slots[f].validade) < vkey(s.validade)) {
+            if (
+              !confirm(
+                `Atenção: Existe um lote na posição ${f} com validade mais próxima (${slots[f].validade}). Deseja realmente reprocessar este lote primeiro?`,
+              )
+            )
+              return;
+          }
+          await dSlot(p);
+          await wLog({ acao: "saida", pos: p, codigo: s.codigo, lote: s.lote });
+          close_();
+        };
+        $("#mv").onclick = () => {
+          const free = allPos.filter((x) => !slots[x]);
+          open_(`<h2>Transferir ${p}</h2><label>Nova posição (livres)</label><select class="f" id="dst">${free.map((x) => `<option>${x}</option>`).join("")}</select>
+    <div class="acts"><button class="btn" id="go">Transferir</button><button class="btn s" onclick="close_()">Cancelar</button></div>`);
+          $("#go").onclick = async () => {
+            const d = $("#dst").value;
+            if (!d) return;
+            await wSlot(d, { ...s, pos: d });
+            await dSlot(p);
+            await wLog({
+              acao: "transferencia",
+              pos: p,
+              dest: d,
+              codigo: s.codigo,
+              lote: s.lote,
+            });
+            close_();
+          };
+        };
+      }
+
+      function openForm(pre) {
+        const free = allPos.filter((x) => !slots[x]);
+        open_(`<h2>Nova entrada</h2>
+  <label>Posição (apenas livres)</label>
+  <select class="f" id="fp">${free.map((x) => `<option ${x === pre ? "selected" : ""}>${x}</option>`).join("")}</select>
+  <label>Código da bala</label><input class="f" id="fc" placeholder="GEL02" autocapitalize="characters">
+  <div class="two"><div><label>Produto</label><select class="f" id="ft"><option>Goma</option><option>Gelatina</option></select></div>
+  <div><label>Dióxido de titânio</label><select class="f" id="fd"><option>Com Dióxido</option><option>Sem Dióxido</option></select></div></div>
+  <div class="two"><div><label>Peso (kg)</label><input class="f" id="fw" type="number" inputmode="decimal" placeholder="475"></div>
+  <div><label>Validade (MM/AA)</label><input class="f" id="fv" placeholder="09/27" maxlength="5" inputmode="numeric"></div></div>
+  <label>Lote do produto</label><input class="f" id="fl" placeholder="2410-02">
+  <div id="fe" style="color:var(--alert);font-size:14px;margin-top:8px"></div>
+  <div class="acts"><button class="btn g" id="fs">Salvar</button><button class="btn s" onclick="close_()">Cancelar</button></div>`);
+        $("#fv").oninput = (e) => {
+          let v = e.target.value.replace(/[^\d]/g, "").slice(0, 4);
+          if (v.length > 2) v = v.slice(0, 2) + "/" + v.slice(2);
+          e.target.value = v;
+        };
+        $("#fs").onclick = async () => {
+          const d = {
+            pos: $("#fp").value,
+            codigo: $("#fc").value.trim().toUpperCase(),
+            tipo: $("#ft").value,
+            dioxido: $("#fd").value,
+            peso: $("#fw").value,
+            validade: $("#fv").value,
+            lote: $("#fl").value.trim(),
+          };
+          const m = /^(\d{2})\/(\d{2})$/.exec(d.validade);
+          if (
+            !d.pos ||
+            !d.codigo ||
+            !d.peso ||
+            !d.lote ||
+            !m ||
+            +m[1] < 1 ||
+            +m[1] > 12
+          ) {
+            $("#fe").textContent =
+              "Preencha todos os campos. Validade no formato MM/AA.";
+            return;
+          }
+          if (slots[d.pos]) {
+            $("#fe").textContent = "Posição já ocupada.";
+            return;
+          }
+          d.turno = me.shift;
+          d.turma = me.turma;
+          d.op = me.name;
+          d.ts = Date.now();
+          await wSlot(d.pos, d);
+          await wLog({
+            acao: "entrada",
+            pos: d.pos,
+            codigo: d.codigo,
+            lote: d.lote,
+          });
+          close_();
+        };
+      }
+
+      /* ---------- QR ---------- */
+      function stopScan() {
+        if (qrObj) {
+          try {
+            qrObj.stop().then(() => qrObj.clear());
+          } catch (e) {}
+          qrObj = null;
+        }
+      }
+      function scan() {
+        open_(`<h2>Ler QR Code da estante</h2><div id="qr"></div><div id="qe" style="color:var(--alert);font-size:14px;margin-top:8px"></div>
+  <label>Ou digite a posição</label><input class="f" id="qm" placeholder="EST-A-05">
+  <div class="acts"><button class="btn" id="qg">Usar posição</button><button class="btn s" onclick="close_()">Cancelar</button></div>`);
+        const use = (t) => {
+          const p = normPos(t);
+          if (!p) {
+            $("#qe").textContent = "Código não reconhecido: " + t;
+            return false;
+          }
+          stopScan();
+          slots[p] ? openSlot(p) : openForm(p);
+          return true;
+        };
+        $("#qg").onclick = () => use($("#qm").value);
+        try {
+          if (!window.Html5Qrcode) throw 0;
+          qrObj = new Html5Qrcode("qr");
+          qrObj
+            .start(
+              { facingMode: "environment" },
+              { fps: 10, qrbox: 220 },
+              (t) => use(t),
+              () => {},
+            )
+            .catch(() => {
+              $("#qe").textContent =
+                "Câmera indisponível. Digite a posição abaixo.";
+            });
+        } catch (e) {
+          $("#qe").textContent =
+            "Leitor indisponível. Digite a posição abaixo.";
+        }
+      }
+
+      /* ---------- eventos ---------- */
+      $("#add").onclick = () => openForm();
+      $("#scan").onclick = scan;
+      $("#chg").onclick = login;
+      $("#q").oninput = render;
+      $("#t1").onclick = () => {
+        $("#v1").style.display = "";
+        $("#v2").style.display = "none";
+        $("#t1").className = "on";
+        $("#t2").className = "";
+      };
+      $("#t2").onclick = () => {
+        $("#v2").style.display = "";
+        $("#v1").style.display = "none";
+        $("#t2").className = "on";
+        $("#t1").className = "";
+      };
+
+      /* manifest PWA inline */
+      try {
+        const m = {
+          name: "Docile Retrabalho",
+          short_name: "Retrabalho",
+          display: "standalone",
+          background_color: "#1f2937",
+          theme_color: "#1f2937",
+          start_url: ".",
+        };
+        const l = document.createElement("link");
+        l.rel = "manifest";
+        l.href = URL.createObjectURL(
+          new Blob([JSON.stringify(m)], { type: "application/json" }),
+        );
+        document.head.appendChild(l);
+      } catch (e) {}
+
+      loadLocal();
+      render();
+      if (!me.name || !me.turma) login();
+      initDb().then((ok) => {
+        if (!ok) {
+          $("#warn").innerHTML =
+            '<div class="warn">⚠️ Modo local: os dados ficam só neste aparelho (sem sincronização entre turnos).</div>';
+          render();
+        }
+      });
+    </script>
+  </body>
+</html>
