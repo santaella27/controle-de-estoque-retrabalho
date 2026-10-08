@@ -346,6 +346,55 @@
         width: 100%;
         margin-top: 8px;
       }
+      .mc {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 10px;
+        cursor: pointer;
+      }
+      .mc.v {
+        border: 2px solid #dc2626;
+      }
+      .mc.cur {
+        border: 2px solid #2563eb;
+      }
+      .mc h3 {
+        margin: 0 0 4px;
+        font-size: 17px;
+      }
+      .mc .big {
+        font-size: 22px;
+        font-weight: 800;
+      }
+      .mc .lk {
+        color: #2563eb;
+        font-weight: 700;
+        font-size: 14px;
+        margin-top: 6px;
+      }
+      .sec {
+        margin: 14px 0 6px;
+        font-weight: 700;
+      }
+      .mx {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px 12px;
+        font-size: 15px;
+      }
+      .mx span:nth-child(even) {
+        text-align: right;
+        font-weight: 600;
+      }
+      .cell.loc {
+        outline: 5px solid #2563eb;
+        animation: pk 0.5s infinite alternate;
+      }
       .warn {
         background: #fef9c3;
         color: #713f12;
@@ -368,7 +417,7 @@
       <div id="fefo"></div>
       <div class="tabs">
         <button id="t1" class="on">Mapa</button
-        ><button id="t2">Histórico</button>
+        ><button id="t2">Histórico</button><button id="t3">Consumo</button>
       </div>
       <div id="v1">
         <input
@@ -384,6 +433,7 @@
         </div>
       </div>
       <div id="v2" style="display: none"></div>
+      <div id="v3" style="display: none"></div>
       <footer class="legend">
         <span><i style="background: #22c55e"></i>🟩 Livre</span
         ><span><i style="background: #f97316"></i>🟧 Goma</span
@@ -531,6 +581,7 @@
 
       /* ---------- render ---------- */
       function render() {
+        renderConsumo();
         $("#who").textContent = me.name
           ? `${me.shift} · ${me.turma} · ${me.name}`
           : "";
@@ -551,7 +602,7 @@
             let c = cls(s);
             if (q && (!s || !s.codigo.toUpperCase().includes(q))) c += " dim";
             if (p === f) c += " fefo";
-            h += `<button class="cell ${c}" onclick="openSlot('${p}')">${p}${s ? `<span>${esc(s.codigo)}</span>` : ""}</button>`;
+            h += `<button id="c-${p}" class="cell ${c}" onclick="openSlot('${p}')">${p}${s ? `<span>${esc(s.codigo)}</span>` : ""}</button>`;
           }
           h += "</div></div>";
         }
@@ -571,6 +622,120 @@
           : '<p style="color:var(--mu)">Sem movimentações ainda.</p>';
       }
 
+      /* ---------- planejamento de consumo ---------- */
+      const MESES = [
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
+      ];
+      const kg = (n) =>
+        n.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " kg";
+      const acc = () => ({ p: 0, l: 0 });
+      function calcularResumoPorMes() {
+        const out = {},
+          nk = nowKey();
+        for (const pos in slots) {
+          const it = { ...slots[pos], pos },
+            k = vkey(it.validade),
+            g = k < nk ? "VENC" : it.validade;
+          const m =
+            out[g] ||
+            (out[g] = {
+              key: g,
+              sk: g === "VENC" ? -1 : k,
+              lotes: 0,
+              peso: 0,
+              c: acc(),
+              s: acc(),
+              goma: acc(),
+              gel: acc(),
+              gC: acc(),
+              gS: acc(),
+              eC: acc(),
+              eS: acc(),
+              itens: [],
+            });
+          const peso = Number(it.peso) || 0,
+            goma = it.tipo === "Goma",
+            tio = it.dioxido === "Com Dióxido";
+          const add = (o) => {
+            o.p += peso;
+            o.l++;
+          };
+          m.lotes++;
+          m.peso += peso;
+          add(tio ? m.c : m.s);
+          add(goma ? m.goma : m.gel);
+          add(goma ? (tio ? m.gC : m.gS) : tio ? m.eC : m.eS);
+          m.itens.push(it);
+        }
+        return out;
+      }
+      const nomeMes = (g) => {
+        if (g === "VENC") return "🟥 Vencidos";
+        const [m, a] = g.split("/");
+        return `${g} - ${MESES[+m - 1]}/20${a}`;
+      };
+      function renderConsumo() {
+        const r = calcularResumoPorMes(),
+          nk = nowKey();
+        const L = Object.values(r).sort((a, b) => a.sk - b.sk);
+        $("#v3").innerHTML =
+          `<h2 style="margin:6px 0 10px">Planejamento de Consumo</h2>` +
+          (L.length
+            ? L.map(
+                (m) =>
+                  `<button class="mc ${m.key === "VENC" ? "v" : m.sk === nk ? "cur" : ""}" onclick="openMes('${m.key}')"><h3>${nomeMes(m.key)}${m.sk === nk ? ' <span class="tag" style="background:#2563eb">Mês atual</span>' : ""}</h3><div class="big">${m.lotes} ${m.lotes === 1 ? "retrabalho" : "retrabalhos"} · ${kg(m.peso)}</div><div class="lk">[ Ver Detalhamento e Especificações ]</div></button>`,
+              ).join("")
+            : '<p style="color:var(--mu)">Nenhum lote em estoque.</p>');
+      }
+      function openMes(key) {
+        const m = calcularResumoPorMes()[key];
+        if (!m) {
+          close_();
+          return;
+        }
+        const ln = (n, o) =>
+          `<span>${n}</span><span>${kg(o.p)} (${o.l} ${o.l === 1 ? "lote" : "lotes"})</span>`;
+        open_(`<h2>${nomeMes(key)}</h2><div>${m.lotes} ${m.lotes === 1 ? "retrabalho" : "retrabalhos"} · <b>${kg(m.peso)}</b></div>
+  <div class="sec">Dióxido de titânio</div><div class="mx">${ln("⚪ Com Dióxido", m.c)}${ln("🟢 Sem Dióxido", m.s)}</div>
+  <div class="sec">Tipo de produto</div><div class="mx">${ln("🟧 Goma", m.goma)}${ln("🟪 Gelatina", m.gel)}</div>
+  <div class="sec">Matriz resumo</div><div class="mx">${ln("Goma COM Dióxido", m.gC)}${ln("Goma SEM Dióxido", m.gS)}${ln("Gelatina COM Dióxido", m.eC)}${ln("Gelatina SEM Dióxido", m.eS)}</div>
+  <div class="sec">Lotes do mês</div>
+  ${m.itens
+    .sort(
+      (a, b) =>
+        vkey(a.validade) - vkey(b.validade) || a.pos.localeCompare(b.pos),
+    )
+    .map(
+      (i) =>
+        `<div class="log"><b>${i.pos}</b> · ${esc(i.codigo)} · ${esc(i.peso)} kg${key === "VENC" ? " · val. " + esc(i.validade) : ""}<br><button class="btn s" style="min-height:0;padding:8px 12px;margin-top:6px;font-size:14px" onclick="loc('${i.pos}')">Localizar no Mapa</button></div>`,
+    )
+    .join("")}
+  <div class="acts"><button class="btn s" onclick="close_()">Fechar</button></div>`);
+      }
+      function loc(p) {
+        close_();
+        showTab(1);
+        $("#q").value = "";
+        render();
+        setTimeout(() => {
+          const e = $("#c-" + p);
+          if (!e) return;
+          e.scrollIntoView({ behavior: "smooth", block: "center" });
+          e.classList.add("loc");
+          setTimeout(() => e.classList.remove("loc"), 4000);
+        }, 80);
+      }
       /* ---------- modais ---------- */
       function open_(h) {
         stopScan();
@@ -763,18 +928,14 @@
       $("#scan").onclick = scan;
       $("#chg").onclick = login;
       $("#q").oninput = render;
-      $("#t1").onclick = () => {
-        $("#v1").style.display = "";
-        $("#v2").style.display = "none";
-        $("#t1").className = "on";
-        $("#t2").className = "";
-      };
-      $("#t2").onclick = () => {
-        $("#v2").style.display = "";
-        $("#v1").style.display = "none";
-        $("#t2").className = "on";
-        $("#t1").className = "";
-      };
+      function showTab(n) {
+        for (let i = 1; i <= 3; i++) {
+          $("#v" + i).style.display = i === n ? "" : "none";
+          $("#t" + i).className = i === n ? "on" : "";
+        }
+        window.scrollTo(0, 0);
+      }
+      [1, 2, 3].forEach((n) => ($("#t" + n).onclick = () => showTab(n)));
 
       /* manifest PWA inline */
       try {
