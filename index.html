@@ -590,7 +590,7 @@
         const fb = $("#fefo");
         if (f) {
           const s = slots[f];
-          fb.innerHTML = `<div class="fefo"><div>🚨 <b>PRÓXIMO A CONSUMIR (FEFO)</b><br>Posição <b>${f}</b> | Código <b>${esc(s.codigo)}</b> | Validade <b>${esc(s.validade)}</b></div><button class="btn r" onclick="openSlot('${f}')">DAR SAÍDA</button></div>`;
+          fb.innerHTML = `<div class="fefo"><div>🚨 <b>PRÓXIMO A CONSUMIR</b><br>Posição <b>${f}</b> | Código <b>${esc(s.codigo)}</b> | Validade <b>${esc(s.validade)}</b></div><button class="btn r" onclick="openSlot('${f}')">DAR SAÍDA</button></div>`;
         } else
           fb.innerHTML = `<div class="fefo none">Nenhum lote em estoque.</div>`;
         let h = "";
