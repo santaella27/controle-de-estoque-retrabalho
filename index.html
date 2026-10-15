@@ -407,13 +407,20 @@
   </head>
   <body>
     <header>
-      <div><b>🍬 Docile · Retrabalho</b><small id="who"></small></div>
+      <div>
+        <b>🍬 Docile · Retrabalho</b>
+        <span
+          id="net"
+          style="font-size: 12px; color: #94a3b8"
+          title="Conectando..."
+          >●</span
+        ><small id="who"></small>
+      </div>
       <button class="btn s" style="padding: 8px 12px; min-height: 0" id="chg">
         Trocar
       </button>
     </header>
     <main>
-      <div id="warn"></div>
       <div id="fefo"></div>
       <div class="tabs">
         <button id="t1" class="on">Mapa</button
@@ -437,9 +444,9 @@
       <footer class="legend">
         <span><i style="background: #22c55e"></i>🟩 Livre</span
         ><span><i style="background: #f97316"></i>🟧 Goma</span
-        ><span><i style="background: #fdba74"></i>🟧 Goma c/ dioxido</span
+        ><span><i style="background: #fdba74"></i>🟧 Goma c/ TiO2</span
         ><span><i style="background: #9333ea"></i>🟪 Gelatina</span
-        ><span><i style="background: #d8b4fe"></i>🟪 Gelatina c/ dioxido</span
+        ><span><i style="background: #d8b4fe"></i>🟪 Gelatina c/ TiO2</span
         ><span><i style="background: #dc2626"></i>🟥 Vencido</span
         ><span>⏳ 1º a consumir</span>
       </footer>
@@ -447,7 +454,30 @@
 
     <div class="overlay" id="ov"><div class="sheet" id="sh"></div></div>
 
-    <script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        set,
+        update,
+        onValue,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyCeB7l-Q4pw9p2JTK3jjJXSL08JQMCrzQ",
+        authDomain: "controle-retrabalho.firebaseapp.com",
+        databaseURL: "https://controle-retrabalho-default-rtdb.firebaseio.com",
+        projectId: "controle-retrabalho",
+        storageBucket: "controle-retrabalho.firebasestorage.app",
+        messagingSenderId: "719081651042",
+        appId: "1:719081651042:web:079afd1ae5c9c6a5778a3b",
+        measurementId: "G-W0VSXYMJ2D",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getDatabase(app);
+
       const SH = { A: 22, B: 18, C: 24, D: 34 };
       const $ = (s) => document.querySelector(s);
       const pad = (n) => String(n).padStart(2, "0");
@@ -459,7 +489,6 @@
       let slots = {},
         logs = [],
         me = {},
-        db = null,
         qrObj = null;
       try {
         me = JSON.parse(localStorage.getItem("docile_me") || "{}");
@@ -478,84 +507,100 @@
         return allPos.includes(p) ? p : null;
       };
 
-      /* ---------- dados ---------- */
-      function loadLocal() {
+      /* ---------- dados (Firebase Realtime Database: nó "estoque") ---------- */
+      const ESTOQUE = ref(db, "estoque");
+      function setNet(on, msg) {
+        const n = $("#net");
+        if (!n) return;
+        n.style.color = on ? "#22c55e" : "#ef4444";
+        n.title =
+          msg ||
+          (on ? "Sincronizado em tempo real" : "Sem conexão com a nuvem");
+      }
+      // grava só os caminhos alterados (slots/<pos> e logs/<id>) em uma única operação atômica; null remove a posição
+      async function commit(changes, entry) {
+        const up = {};
+        for (const p in changes) up["slots/" + p] = changes[p];
+        entry.ts = Date.now();
+        entry.shift = me.shift;
+        entry.turma = me.turma;
+        entry.op = me.name;
+        up["logs/" + entry.ts + "-" + Math.random().toString(36).slice(2, 6)] =
+          entry;
         try {
-          slots = JSON.parse(localStorage.getItem("docile_slots") || "{}");
-          logs = JSON.parse(localStorage.getItem("docile_logs") || "[]");
-        } catch (e) {}
-      }
-      function saveLocal() {
-        try {
-          localStorage.setItem("docile_slots", JSON.stringify(slots));
-          localStorage.setItem("docile_logs", JSON.stringify(logs));
-        } catch (e) {}
-      }
-      async function wSlot(pos, data) {
-        if (db) {
-          await db.collection("slots").doc(pos).set(data);
-        } else {
-          slots[pos] = data;
-          saveLocal();
-          render();
-        }
-      }
-      async function dSlot(pos) {
-        if (db) {
-          await db.collection("slots").doc(pos).delete();
-        } else {
-          delete slots[pos];
-          saveLocal();
-          render();
-        }
-      }
-      async function wLog(e) {
-        e.ts = Date.now();
-        e.shift = me.shift;
-        e.turma = me.turma;
-        e.op = me.name;
-        if (db) {
-          await db
-            .collection("log")
-            .doc(e.ts + "-" + Math.random().toString(36).slice(2, 6))
-            .set(e);
-        } else {
-          logs.unshift(e);
-          saveLocal();
-          render();
-        }
-      }
-      async function initDb() {
-        try {
-          const c = await claude.use("db");
-          if (!c) {
-            return false;
-          }
-          db = c;
-          db.collection("slots").onSnapshot(
-            (s) => {
-              slots = {};
-              s.docs.forEach((d) => (slots[d.id] = d.data()));
-              render();
-            },
-            () => {},
-          );
-          db.collection("log")
-            .orderBy("ts", "desc")
-            .limit(200)
-            .onSnapshot(
-              (s) => {
-                logs = s.docs.map((d) => d.data());
-                render();
-              },
-              () => {},
-            );
-          return true;
+          await update(ESTOQUE, JSON.parse(JSON.stringify(up)));
         } catch (e) {
-          db = null;
-          return false;
+          alert(
+            "Não foi possível gravar na nuvem. Verifique a conexão e as regras do Realtime Database.",
+          );
+          throw e;
         }
       }
+      // lê o estoque antigo salvo só neste aparelho (versão sem Firebase) no formato do nó "estoque"
+      function lerDadosLocais() {
+        try {
+          const sl =
+            JSON.parse(localStorage.getItem("docile_slots") || "{}") || {};
+          const lg =
+            JSON.parse(localStorage.getItem("docile_logs") || "[]") || [];
+          if (!Object.keys(sl).length && !lg.length) return null;
+          const logsObj = {};
+          lg.forEach((l, i) => {
+            logsObj[(l.ts || Date.now()) + "-m" + i] = l;
+          });
+          const d = {};
+          if (Object.keys(sl).length) d.slots = sl;
+          if (lg.length) d.logs = logsObj;
+          return JSON.parse(JSON.stringify(d));
+        } catch (e) {
+          return null;
+        }
+      }
+      let primeiraLeitura = true;
+      onValue(
+        ESTOQUE,
+        (snap) => {
+          const v = snap.val();
+          if (primeiraLeitura) {
+            primeiraLeitura = false;
+            // Firebase vazio + dados no localStorage => sobe o estoque local para a nuvem (uma única vez)
+            if (v == null) {
+              const local = lerDadosLocais();
+              if (local) {
+                set(ESTOQUE, local)
+                  .then(() => {
+                    try {
+                      localStorage.setItem(
+                        "docile_backup_pre_firebase",
+                        JSON.stringify({
+                          slots: localStorage.getItem("docile_slots"),
+                          logs: localStorage.getItem("docile_logs"),
+                        }),
+                      );
+                      localStorage.removeItem("docile_slots");
+                      localStorage.removeItem("docile_logs");
+                    } catch (e) {}
+                  })
+                  .catch((e) => {
+                    primeiraLeitura = true;
+                    setNet(false, "Falha ao migrar dados locais: " + e.message);
+                  });
+                return; // o onValue dispara de novo com os dados já na nuvem
+              }
+            }
+          }
+          const d = v || {};
+          slots = d.slots || {};
+          logs = Object.values(d.logs || {})
+            .sort((a, b) => b.ts - a.ts)
+            .slice(0, 200);
+          render();
+        },
+        (err) => {
+          setNet(false, "Erro: " + err.message);
+        },
+      );
+      onValue(ref(db, ".info/connected"), (s) => setNet(!!s.val()));
 
       /* ---------- cores ---------- */
       const nowKey = () => {
@@ -590,7 +635,7 @@
         const fb = $("#fefo");
         if (f) {
           const s = slots[f];
-          fb.innerHTML = `<div class="fefo"><div>🚨 <b>PRÓXIMO A CONSUMIR</b><br>Posição <b>${f}</b> | Código <b>${esc(s.codigo)}</b> | Validade <b>${esc(s.validade)}</b></div><button class="btn r" onclick="openSlot('${f}')">DAR SAÍDA</button></div>`;
+          fb.innerHTML = `<div class="fefo"><div>🚨 <b>PRÓXIMO A CONSUMIR (FEFO)</b><br>Posição <b>${f}</b> | Código <b>${esc(s.codigo)}</b> | Validade <b>${esc(s.validade)}</b></div><button class="btn r" onclick="openSlot('${f}')">DAR SAÍDA</button></div>`;
         } else
           fb.innerHTML = `<div class="fefo none">Nenhum lote em estoque.</div>`;
         let h = "";
@@ -752,7 +797,7 @@
           (L.length
             ? `<div style="font-size:13px;color:var(--mu);margin-bottom:6px">Peso (kg) por mês de vencimento. Toque em uma coluna para ver o detalhamento.</div>
   <div style="overflow-x:auto;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px 0">${chartSvg(L)}</div>
-  <div class="legend">${sw("#f97316", "Goma s/ dioxido")}${sw("#fdba74", "Goma c/ dioxido")}${sw("#9333ea", "Gelatina s/ dioxido")}${sw("#d8b4fe", "Gelatina c/ dioxido")}</div>
+  <div class="legend">${sw("#f97316", "Goma s/ TiO2")}${sw("#fdba74", "Goma c/ TiO2")}${sw("#9333ea", "Gelatina s/ TiO2")}${sw("#d8b4fe", "Gelatina c/ TiO2")}</div>
   <div class="sec">Resumo por mês</div>` +
               L.map(
                 (m) =>
@@ -855,8 +900,10 @@
             )
               return;
           }
-          await dSlot(p);
-          await wLog({ acao: "saida", pos: p, codigo: s.codigo, lote: s.lote });
+          await commit(
+            { [p]: null },
+            { acao: "saida", pos: p, codigo: s.codigo, lote: s.lote },
+          );
           close_();
         };
         $("#mv").onclick = () => {
@@ -866,15 +913,16 @@
           $("#go").onclick = async () => {
             const d = $("#dst").value;
             if (!d) return;
-            await wSlot(d, { ...s, pos: d });
-            await dSlot(p);
-            await wLog({
-              acao: "transferencia",
-              pos: p,
-              dest: d,
-              codigo: s.codigo,
-              lote: s.lote,
-            });
+            await commit(
+              { [d]: { ...s, pos: d }, [p]: null },
+              {
+                acao: "transferencia",
+                pos: p,
+                dest: d,
+                codigo: s.codigo,
+                lote: s.lote,
+              },
+            );
             close_();
           };
         };
@@ -930,13 +978,10 @@
           d.turma = me.turma;
           d.op = me.name;
           d.ts = Date.now();
-          await wSlot(d.pos, d);
-          await wLog({
-            acao: "entrada",
-            pos: d.pos,
-            codigo: d.codigo,
-            lote: d.lote,
-          });
+          await commit(
+            { [d.pos]: d },
+            { acao: "entrada", pos: d.pos, codigo: d.codigo, lote: d.lote },
+          );
           close_();
         };
       }
@@ -1017,16 +1062,10 @@
         document.head.appendChild(l);
       } catch (e) {}
 
-      loadLocal();
+      // funções chamadas por onclick inline precisam ser globais (script é um módulo)
+      Object.assign(window, { openSlot, openMes, loc, close_ });
       render();
       if (!me.name || !me.turma) login();
-      initDb().then((ok) => {
-        if (!ok) {
-          $("#warn").innerHTML =
-            '<div class="warn">⚠️ Modo local: os dados ficam só neste aparelho (sem sincronização entre turnos).</div>';
-          render();
-        }
-      });
     </script>
   </body>
 </html>
