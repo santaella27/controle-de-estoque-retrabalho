@@ -635,7 +635,7 @@
         const fb = $("#fefo");
         if (f) {
           const s = slots[f];
-          fb.innerHTML = `<div class="fefo"><div>🚨 <b>PRÓXIMO A CONSUMIR (FEFO)</b><br>Posição <b>${f}</b> | Código <b>${esc(s.codigo)}</b> | Validade <b>${esc(s.validade)}</b></div><button class="btn r" onclick="openSlot('${f}')">DAR SAÍDA</button></div>`;
+          fb.innerHTML = `<div class="fefo"><div>🚨 <b>PRÓXIMO A CONSUMIR </b><br>Posição <b>${f}</b> | Código <b>${esc(s.codigo)}</b> | Validade <b>${esc(s.validade)}</b></div><button class="btn r" onclick="openSlot('${f}')">DAR SAÍDA</button></div>`;
         } else
           fb.innerHTML = `<div class="fefo none">Nenhum lote em estoque.</div>`;
         let h = "";
@@ -797,7 +797,7 @@
           (L.length
             ? `<div style="font-size:13px;color:var(--mu);margin-bottom:6px">Peso (kg) por mês de vencimento. Toque em uma coluna para ver o detalhamento.</div>
   <div style="overflow-x:auto;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px 0">${chartSvg(L)}</div>
-  <div class="legend">${sw("#f97316", "Goma s/ TiO2")}${sw("#fdba74", "Goma c/ TiO2")}${sw("#9333ea", "Gelatina s/ TiO2")}${sw("#d8b4fe", "Gelatina c/ TiO2")}</div>
+  <div class="legend">${sw("#f97316", "Goma s/dioxido")}${sw("#fdba74", "Goma c/dioxido")}${sw("#9333ea", "Gelatina s/dioxido")}${sw("#d8b4fe", "Gelatina c/dioxido")}</div>
   <div class="sec">Resumo por mês</div>` +
               L.map(
                 (m) =>
