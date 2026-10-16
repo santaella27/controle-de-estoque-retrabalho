@@ -193,41 +193,6 @@
         grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
         gap: 6px;
       }
-      .scroll {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scroll-behavior: smooth;
-        padding: 6px 2px 8px;
-      }
-      .floors {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        width: max-content;
-      }
-      .floor {
-        display: grid;
-        gap: 6px;
-        align-items: center;
-      }
-      .floor .fl {
-        position: sticky;
-        left: 0;
-        z-index: 2;
-        background: var(--card);
-        align-self: stretch;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        color: var(--mu);
-        border-right: 2px solid var(--bd);
-        writing-mode: vertical-rl;
-        transform: rotate(180deg);
-      }
       .cell {
         position: relative;
         aspect-ratio: 1;
@@ -514,18 +479,6 @@
       const db = getDatabase(app);
 
       const SH = { A: 22, B: 18, C: 24, D: 34 };
-      // andares físicos (nome, primeira e última posição). B e D mantêm a grade corrida original
-      const FLOORS = {
-        A: [
-          ["Cima", 1, 11],
-          ["Baixo", 12, 22],
-        ],
-        C: [
-          ["Cima", 1, 8],
-          ["Meio", 9, 16],
-          ["Baixo", 17, 24],
-        ],
-      };
       const $ = (s) => document.querySelector(s);
       const pad = (n) => String(n).padStart(2, "0");
       const esc = (s) =>
@@ -686,29 +639,17 @@
         } else
           fb.innerHTML = `<div class="fefo none">Nenhum lote em estoque.</div>`;
         let h = "";
-        const cell = (p) => {
-          const s = slots[p];
-          let c = cls(s);
-          if (q && (!s || !s.codigo.toUpperCase().includes(q))) c += " dim";
-          if (p === f) c += " fefo";
-          return `<button id="c-${p}" class="cell ${c}" onclick="openSlot('${p}')">${p}${s ? `<span>${esc(s.codigo)}</span>` : ""}</button>`;
-        };
         for (const k in SH) {
-          h += `<div class="row"><h3>PRATELEIRA ${k} · ${SH[k]} posições${FLOORS[k] ? " · " + FLOORS[k].length + " andares" : ""}</h3>`;
-          if (FLOORS[k]) {
-            // A e C: um andar por linha, colunas de 56px fixas e rolagem horizontal
-            h += '<div class="scroll"><div class="floors">';
-            for (const [nome, ini, fim] of FLOORS[k]) {
-              h += `<div class="floor" style="grid-template-columns:22px repeat(${fim - ini + 1},56px)"><div class="fl">${nome}</div>`;
-              for (let i = ini; i <= fim; i++) h += cell(k + "-" + pad(i));
-              h += "</div>";
-            }
-            h += "</div></div></div>";
-          } else {
-            h += '<div class="grid">';
-            for (let i = 1; i <= SH[k]; i++) h += cell(k + "-" + pad(i));
-            h += "</div></div>";
+          h += `<div class="row"><h3>PRATELEIRA ${k} · ${SH[k]} posições</h3><div class="grid">`;
+          for (let i = 1; i <= SH[k]; i++) {
+            const p = k + "-" + pad(i),
+              s = slots[p];
+            let c = cls(s);
+            if (q && (!s || !s.codigo.toUpperCase().includes(q))) c += " dim";
+            if (p === f) c += " fefo";
+            h += `<button id="c-${p}" class="cell ${c}" onclick="openSlot('${p}')">${p}${s ? `<span>${esc(s.codigo)}</span>` : ""}</button>`;
           }
+          h += "</div></div>";
         }
         $("#map").innerHTML = h;
         const icon = {
@@ -897,11 +838,7 @@
         setTimeout(() => {
           const e = $("#c-" + p);
           if (!e) return;
-          e.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-            inline: "center",
-          });
+          e.scrollIntoView({ behavior: "smooth", block: "center" });
           e.classList.add("loc");
           setTimeout(() => e.classList.remove("loc"), 4000);
         }, 80);
