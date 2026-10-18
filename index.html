@@ -193,6 +193,41 @@
         grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
         gap: 6px;
       }
+      .scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        padding: 6px 2px 8px;
+      }
+      .floors {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: max-content;
+      }
+      .floor {
+        display: grid;
+        gap: 6px;
+        align-items: center;
+      }
+      .floor .fl {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        background: var(--card);
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--mu);
+        border-right: 2px solid var(--bd);
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+      }
       .cell {
         position: relative;
         aspect-ratio: 1;
@@ -444,9 +479,9 @@
       <footer class="legend">
         <span><i style="background: #22c55e"></i>🟩 Livre</span
         ><span><i style="background: #f97316"></i>🟧 Goma</span
-        ><span><i style="background: #fdba74"></i>🟧 Goma c/ dioxido</span
+        ><span><i style="background: #fdba74"></i>🟧 Goma c/ TiO2</span
         ><span><i style="background: #9333ea"></i>🟪 Gelatina</span
-        ><span><i style="background: #d8b4fe"></i>🟪 Gelatina c/ dioxido</span
+        ><span><i style="background: #d8b4fe"></i>🟪 Gelatina c/ TiO2</span
         ><span><i style="background: #dc2626"></i>🟥 Vencido</span
         ><span>⏳ 1º a consumir</span>
       </footer>
@@ -479,6 +514,18 @@
       const db = getDatabase(app);
 
       const SH = { A: 22, B: 18, C: 24, D: 34 };
+      // andares físicos (nome, primeira e última posição). B e D mantêm a grade corrida original
+      const FLOORS = {
+        A: [
+          ["Cima", 1, 11],
+          ["Baixo", 12, 22],
+        ],
+        C: [
+          ["Cima", 1, 8],
+          ["Meio", 9, 16],
+          ["Baixo", 17, 24],
+        ],
+      };
       const $ = (s) => document.querySelector(s);
       const pad = (n) => String(n).padStart(2, "0");
       const esc = (s) =>
@@ -509,6 +556,7 @@
 
       /* ---------- dados (Firebase Realtime Database: nó "estoque") ---------- */
       const ESTOQUE = ref(db, "estoque");
+      let saidas = []; // registros do nó historico_saidas
       function setNet(on, msg) {
         const n = $("#net");
         if (!n) return;
@@ -517,18 +565,29 @@
           msg ||
           (on ? "Sincronizado em tempo real" : "Sem conexão com a nuvem");
       }
-      // grava só os caminhos alterados (slots/<pos> e logs/<id>) em uma única operação atômica; null remove a posição
-      async function commit(changes, entry) {
-        const up = {};
-        for (const p in changes) up["slots/" + p] = changes[p];
+      // grava só os caminhos alterados, numa única operação atômica:
+      // estoque/slots/<pos> (null remove), estoque/logs/<id> e, em saídas, historico_saidas/<id>
+      async function commit(changes, entry, saida) {
+        const up = {},
+          id = () => Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+        for (const p in changes) up["estoque/slots/" + p] = changes[p];
         entry.ts = Date.now();
         entry.shift = me.shift;
         entry.turma = me.turma;
         entry.op = me.name;
-        up["logs/" + entry.ts + "-" + Math.random().toString(36).slice(2, 6)] =
-          entry;
+        up["estoque/logs/" + id()] = entry;
+        if (saida) {
+          Object.assign(saida, {
+            ts: entry.ts,
+            data: new Date(entry.ts).toISOString(),
+            shift: me.shift,
+            turma: me.turma,
+            op: me.name,
+          });
+          up["historico_saidas/" + id()] = saida;
+        }
         try {
-          await update(ESTOQUE, JSON.parse(JSON.stringify(up)));
+          await update(ref(db), JSON.parse(JSON.stringify(up)));
         } catch (e) {
           alert(
             "Não foi possível gravar na nuvem. Verifique a conexão e as regras do Realtime Database.",
@@ -536,6 +595,14 @@
           throw e;
         }
       }
+      onValue(
+        ref(db, "historico_saidas"),
+        (snap) => {
+          saidas = Object.values(snap.val() || {});
+          render();
+        },
+        () => {},
+      );
       // lê o estoque antigo salvo só neste aparelho (versão sem Firebase) no formato do nó "estoque"
       function lerDadosLocais() {
         try {
@@ -639,29 +706,42 @@
         } else
           fb.innerHTML = `<div class="fefo none">Nenhum lote em estoque.</div>`;
         let h = "";
+        const cell = (p) => {
+          const s = slots[p];
+          let c = cls(s);
+          if (q && (!s || !s.codigo.toUpperCase().includes(q))) c += " dim";
+          if (p === f) c += " fefo";
+          return `<button id="c-${p}" class="cell ${c}" onclick="openSlot('${p}')">${p}${s ? `<span>${esc(s.codigo)}</span>` : ""}</button>`;
+        };
         for (const k in SH) {
-          h += `<div class="row"><h3>PRATELEIRA ${k} · ${SH[k]} posições</h3><div class="grid">`;
-          for (let i = 1; i <= SH[k]; i++) {
-            const p = k + "-" + pad(i),
-              s = slots[p];
-            let c = cls(s);
-            if (q && (!s || !s.codigo.toUpperCase().includes(q))) c += " dim";
-            if (p === f) c += " fefo";
-            h += `<button id="c-${p}" class="cell ${c}" onclick="openSlot('${p}')">${p}${s ? `<span>${esc(s.codigo)}</span>` : ""}</button>`;
+          h += `<div class="row"><h3>PRATELEIRA ${k} · ${SH[k]} posições${FLOORS[k] ? " · " + FLOORS[k].length + " andares" : ""}</h3>`;
+          if (FLOORS[k]) {
+            // A e C: um andar por linha, colunas de 56px fixas e rolagem horizontal
+            h += '<div class="scroll"><div class="floors">';
+            for (const [nome, ini, fim] of FLOORS[k]) {
+              h += `<div class="floor" style="grid-template-columns:22px repeat(${fim - ini + 1},56px)"><div class="fl">${nome}</div>`;
+              for (let i = ini; i <= fim; i++) h += cell(k + "-" + pad(i));
+              h += "</div>";
+            }
+            h += "</div></div></div>";
+          } else {
+            h += '<div class="grid">';
+            for (let i = 1; i <= SH[k]; i++) h += cell(k + "-" + pad(i));
+            h += "</div></div>";
           }
-          h += "</div></div>";
         }
         $("#map").innerHTML = h;
         const icon = {
           entrada: "🟢 Entrada",
           saida: "🔴 Saída",
           transferencia: "🔁 Transferência",
+          edicao: "✏️ Edição de Dados",
         };
         $("#v2").innerHTML = logs.length
           ? logs
               .map(
                 (l) =>
-                  `<div class="log"><b>${icon[l.acao] || l.acao}</b> · ${esc(l.codigo)} · ${esc(l.pos)}${l.dest ? " → " + esc(l.dest) : ""}<br><small>${new Date(l.ts).toLocaleString("pt-BR")} · ${esc(l.shift)} · ${esc(l.turma || "-")} · ${esc(l.op)}${l.lote ? " · Lote " + esc(l.lote) : ""}</small></div>`,
+                  `<div class="log"><b>${icon[l.acao] || l.acao}</b> · ${esc(l.codigo)} · ${esc(l.pos)}${l.dest ? " → " + esc(l.dest) : ""}<br><small>${new Date(l.ts).toLocaleString("pt-BR")} · ${esc(l.shift)} · ${esc(l.turma || "-")} · ${esc(l.op)}${l.lote ? " · Lote " + esc(l.lote) : ""}</small>${l.detalhe ? `<br><small>${esc(l.detalhe)}</small>` : ""}</div>`,
               )
               .join("")
           : '<p style="color:var(--mu)">Sem movimentações ainda.</p>';
@@ -787,9 +867,61 @@
         });
         return o + "</svg>";
       }
+      let mesSel = null;
+      const mkey = (ts) => {
+        const d = new Date(ts);
+        return d.getFullYear() + "-" + pad(d.getMonth() + 1);
+      };
+      const mlabel = (k) => {
+        const [y, m] = k.split("-");
+        return MESES[+m - 1] + "/" + y;
+      };
+      function setMesConsumo(v) {
+        mesSel = v;
+        renderConsumo();
+      }
+      function painelConsumido() {
+        const cur = mkey(Date.now());
+        const meses = [...new Set([cur, ...saidas.map((x) => mkey(x.ts))])]
+          .sort()
+          .reverse();
+        const sel = meses.includes(mesSel) ? mesSel : cur;
+        const L = saidas
+          .filter((x) => mkey(x.ts) === sel)
+          .sort((a, b) => b.ts - a.ts);
+        const t = acc(),
+          c = { gC: acc(), gS: acc(), eC: acc(), eS: acc() };
+        L.forEach((x) => {
+          const p = Number(x.peso) || 0,
+            g = x.tipo === "Goma",
+            tio = x.dioxido === "Com Dióxido";
+          const o = g ? (tio ? c.gC : c.gS) : tio ? c.eC : c.eS;
+          o.p += p;
+          o.l++;
+          t.p += p;
+          t.l++;
+        });
+        const ln = (n, o) =>
+          `<span>${n}</span><span>${kg(o.p)} (${o.l} ${o.l === 1 ? "lote" : "lotes"})</span>`;
+        return `<div class="sec" style="margin-top:22px;font-size:18px">Consumo Realizado / Processado no Mês</div>
+  <select class="f" style="margin:6px 0 10px" onchange="setMesConsumo(this.value)">${meses.map((k) => `<option value="${k}" ${k === sel ? "selected" : ""}>${mlabel(k)}${k === cur ? " (mês atual)" : ""}</option>`).join("")}</select>
+  <div class="mc" style="cursor:default;border:2px solid var(--free)"><h3>Total Consumido no Mês</h3><div class="big">${kg(t.p)} · ${t.l} ${t.l === 1 ? "lote" : "lotes"}</div></div>
+  <div class="sec">Por categoria consumida</div>
+  <div class="mx">${ln("🟧 Goma COM Dióxido", c.gC)}${ln("🟧 Goma SEM Dióxido", c.gS)}${ln("🟪 Gelatina COM Dióxido", c.eC)}${ln("🟪 Gelatina SEM Dióxido", c.eS)}</div>
+  <div class="sec">Lotes consumidos (saídas do mês)</div>
+  ${
+    L.length
+      ? L.slice(0, 50)
+          .map(
+            (x) =>
+              `<div class="log"><b>${esc(x.codigo)}</b> · ${esc(x.tipo)} · ${esc(x.dioxido)} · ${kg(Number(x.peso) || 0)}<br><small>${new Date(x.ts).toLocaleString("pt-BR")} · ${esc(x.op)} · ${esc(x.shift)} · ${esc(x.turma || "-")}</small></div>`,
+          )
+          .join("")
+      : '<p style="color:var(--mu)">Nenhuma saída registrada neste mês.</p>'
+  }`;
+      }
       function renderConsumo() {
-        const r = calcularResumoPorMes(),
-          nk = nowKey();
+        const r = calcularResumoPorMes();
         const L = Object.values(r).sort((a, b) => a.sk - b.sk);
         const sw = (c, t) => `<span><i style="background:${c}"></i>${t}</span>`;
         $("#v3").innerHTML =
@@ -797,13 +929,9 @@
           (L.length
             ? `<div style="font-size:13px;color:var(--mu);margin-bottom:6px">Peso (kg) por mês de vencimento. Toque em uma coluna para ver o detalhamento.</div>
   <div style="overflow-x:auto;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:8px 0">${chartSvg(L)}</div>
-  <div class="legend">${sw("#f97316", "Goma s/ dioxido")}${sw("#fdba74", "Goma c/ dioxido")}${sw("#9333ea", "Gelatina s/ dioxido")}${sw("#d8b4fe", "Gelatina c/ dioxido")}</div>
-  <div class="sec">Resumo por mês</div>` +
-              L.map(
-                (m) =>
-                  `<button class="mc ${m.key === "VENC" ? "v" : m.sk === nk ? "cur" : ""}" onclick="openMes('${m.key}')"><h3>${nomeMes(m.key)}${m.sk === nk ? ' <span class="tag" style="background:#2563eb">Mês atual</span>' : ""}</h3><div class="big">${m.lotes} ${m.lotes === 1 ? "retrabalho" : "retrabalhos"} · ${kg(m.peso)}</div><div class="lk">[ Ver Detalhamento e Especificações ]</div></button>`,
-              ).join("")
-            : '<p style="color:var(--mu)">Nenhum lote em estoque.</p>');
+  <div class="legend">${sw("#f97316", "Goma s/ dioxido")}${sw("#fdba74", "Goma c/ dioxido")}${sw("#9333ea", "Gelatina s/ dioxido")}${sw("#d8b4fe", "Gelatina c/ dioxido")}</div>`
+            : '<p style="color:var(--mu)">Nenhum lote em estoque.</p>') +
+          painelConsumido();
       }
       function openMes(key) {
         const m = calcularResumoPorMes()[key];
@@ -838,7 +966,11 @@
         setTimeout(() => {
           const e = $("#c-" + p);
           if (!e) return;
-          e.scrollIntoView({ behavior: "smooth", block: "center" });
+          e.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "center",
+          });
           e.classList.add("loc");
           setTimeout(() => e.classList.remove("loc"), 4000);
         }, 80);
@@ -888,7 +1020,7 @@
         }
         open_(`<h2>${p} <span class="tag" style="background:var(${s.tipo === "Goma" ? "--goma" : "--gel"})">${esc(s.tipo)}</span>${vencido(s) ? '<span class="tag" style="background:#dc2626">VENCIDO</span>' : ""}</h2>
   <div class="kv"><b>Código</b><span>${esc(s.codigo)}</span><b>Dióxido</b><span>${esc(s.dioxido)}</span><b>Peso</b><span>${esc(s.peso)} kg</span><b>Validade</b><span>${esc(s.validade)}</span><b>Lote</b><span>${esc(s.lote)}</span><b>Turno entrada</b><span>${esc(s.turno)}</span><b>Turma</b><span>${esc(s.turma || "-")}</span><b>Assistente</b><span>${esc(s.op)}</span><b>Registro</b><span>${new Date(s.ts).toLocaleString("pt-BR")}</span></div>
-  <div class="acts"><button class="btn r" id="out">DAR SAÍDA / CONSUMIR</button><button class="btn s" id="mv">TRANSFERIR POSIÇÃO</button></div>
+  <div class="acts"><button class="btn r" id="out">DAR SAÍDA / CONSUMIR</button><button class="btn s" id="mv">TRANSFERIR POSIÇÃO</button><button class="btn s" id="ed">✏️ EDITAR</button></div>
   <div class="acts"><button class="btn s" onclick="close_()">Fechar</button></div>`);
         $("#out").onclick = async () => {
           const f = fefo();
@@ -903,9 +1035,19 @@
           await commit(
             { [p]: null },
             { acao: "saida", pos: p, codigo: s.codigo, lote: s.lote },
+            {
+              pos: p,
+              codigo: s.codigo,
+              tipo: s.tipo,
+              dioxido: s.dioxido,
+              peso: Number(s.peso) || 0,
+              validade: s.validade,
+              lote: s.lote,
+            },
           );
           close_();
         };
+        $("#ed").onclick = () => openEdit(p);
         $("#mv").onclick = () => {
           const free = allPos.filter((x) => !slots[x]);
           open_(`<h2>Transferir ${p}</h2><label>Nova posição (livres)</label><select class="f" id="dst">${free.map((x) => `<option>${x}</option>`).join("")}</select>
@@ -925,6 +1067,97 @@
             );
             close_();
           };
+        };
+      }
+
+      function openEdit(p) {
+        const s = slots[p];
+        if (!s) {
+          close_();
+          return;
+        }
+        const opt = (arr, v) =>
+          arr
+            .map((x) => `<option ${x === v ? "selected" : ""}>${x}</option>`)
+            .join("");
+        const turnos = ["1º Turno", "2º Turno", "3º Turno", "Turno 12x36"],
+          turmas = ["Turma 1", "Turma 2", "Turma 3", "Turma 4"];
+        if (!turnos.includes(s.turno)) turnos.push(s.turno || "-");
+        if (!turmas.includes(s.turma)) turmas.push(s.turma || "-");
+        open_(`<h2>Editar ${p}</h2>
+  <label>Código da bala</label><input class="f" id="ec" value="${esc(s.codigo)}" autocapitalize="characters">
+  <div class="two"><div><label>Produto</label><select class="f" id="et">${opt(["Goma", "Gelatina"], s.tipo)}</select></div>
+  <div><label>Dióxido de titânio</label><select class="f" id="ed2">${opt(["Com Dióxido", "Sem Dióxido"], s.dioxido)}</select></div></div>
+  <div class="two"><div><label>Peso (kg)</label><input class="f" id="ew" type="number" inputmode="decimal" value="${esc(s.peso)}"></div>
+  <div><label>Validade (MM/AA)</label><input class="f" id="ev" value="${esc(s.validade)}" maxlength="5" inputmode="numeric"></div></div>
+  <label>Lote do produto</label><input class="f" id="el" value="${esc(s.lote)}">
+  <div class="two"><div><label>Turno</label><select class="f" id="eT">${opt(turnos, s.turno)}</select></div>
+  <div><label>Turma</label><select class="f" id="eU">${opt(turmas, s.turma)}</select></div></div>
+  <label>Nome do assistente</label><input class="f" id="eN" value="${esc(s.op)}">
+  <div id="ee" style="color:var(--alert);font-size:14px;margin-top:8px"></div>
+  <div class="acts"><button class="btn g" id="es">SALVAR ALTERAÇÕES</button><button class="btn s" id="ex">CANCELAR</button></div>`);
+        $("#ev").oninput = (e) => {
+          let v = e.target.value.replace(/[^\d]/g, "").slice(0, 4);
+          if (v.length > 2) v = v.slice(0, 2) + "/" + v.slice(2);
+          e.target.value = v;
+        };
+        $("#ex").onclick = () => openSlot(p);
+        $("#es").onclick = async () => {
+          const n = {
+            ...s,
+            codigo: $("#ec").value.trim().toUpperCase(),
+            tipo: $("#et").value,
+            dioxido: $("#ed2").value,
+            peso: $("#ew").value,
+            validade: $("#ev").value,
+            lote: $("#el").value.trim(),
+            turno: $("#eT").value,
+            turma: $("#eU").value,
+            op: $("#eN").value.trim(),
+          };
+          const m = /^(\d{2})\/(\d{2})$/.exec(n.validade);
+          if (
+            !n.codigo ||
+            !n.peso ||
+            !n.lote ||
+            !n.op ||
+            !m ||
+            +m[1] < 1 ||
+            +m[1] > 12
+          ) {
+            $("#ee").textContent =
+              "Preencha todos os campos. Validade no formato MM/AA.";
+            return;
+          }
+          const rot = {
+            codigo: "Código",
+            tipo: "Produto",
+            dioxido: "Dióxido",
+            peso: "Peso",
+            validade: "Validade",
+            lote: "Lote",
+            turno: "Turno",
+            turma: "Turma",
+            op: "Assistente",
+          };
+          const diff = Object.keys(rot)
+            .filter((k) => String(s[k] ?? "") !== String(n[k] ?? ""))
+            .map((k) => `${rot[k]}: ${s[k] ?? "-"} → ${n[k]}`);
+          if (!diff.length) {
+            openSlot(p);
+            return;
+          }
+          await commit(
+            { [p]: n },
+            {
+              acao: "edicao",
+              pos: p,
+              codigo: n.codigo,
+              lote: n.lote,
+              detalhe: diff.join("; "),
+            },
+          );
+          close_();
         };
       }
 
@@ -1063,7 +1296,7 @@
       } catch (e) {}
 
       // funções chamadas por onclick inline precisam ser globais (script é um módulo)
-      Object.assign(window, { openSlot, openMes, loc, close_ });
+      Object.assign(window, { openSlot, openMes, loc, close_, setMesConsumo });
       render();
       if (!me.name || !me.turma) login();
     </script>
